@@ -1,11 +1,10 @@
 using System.CommandLine;
 using Polly;
-using Polly.Fallback;
 using Spectre.Console;
 
 namespace Cassandra.Migrations.Handlers;
 
-public class MigrateCommandHandler
+public sealed class MigrateCommandHandler
 {
     public static Command Build()
     {
@@ -46,8 +45,14 @@ public class MigrateCommandHandler
         return migrateCommand;
     }
 
-    private static async Task Handle(string host, string keyspace, string user, string password,
-        string scriptsPath, int port, bool forceKeyspace)
+    private static async Task Handle(
+        string host,
+        string keyspace,
+        string user,
+        string password,
+        string scriptsPath,
+        int port, 
+        bool forceKeyspace)
     {
         ISession session = null;
         var migrations = new List<(Migration Migrations, bool Applied)>();
@@ -131,56 +136,52 @@ public class MigrateCommandHandler
         await AnsiConsole.Live(cliTable)
             .Overflow(VerticalOverflow.Ellipsis)
             .Cropping(VerticalOverflowCropping.Bottom)
-            .StartAsync(async tableContext =>
+            .StartAsync(StartInternal);
+        return;
+
+        async Task StartInternal(LiveDisplayContext tableContext)
+        {
+            var stateFailed = false;
+
+            cliTable.AddColumn("Version");
+            cliTable.AddColumn("Name");
+            cliTable.AddColumn("Status");
+            tableContext.Refresh();
+
+            foreach (var (migration, applied) in migrations)
             {
-                var stateFailed = false;
-
-                cliTable.AddColumn("Version");
-                cliTable.AddColumn("Name");
-                cliTable.AddColumn("Status");
-                tableContext.Refresh();
-
-                foreach (var (migration, applied) in migrations)
+                if (stateFailed)
                 {
-                    if (stateFailed)
-                    {
-                        cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name,
-                            $"{Emoji.Known.BrownCircle} Skipped");
-                    }
-                    else if (applied)
-                    {
-                        cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name,
-                            $"[green]{Emoji.Known.CheckMark}[/] Applied");
-                    }
-                    else
-                    {
-                        try
-                        {
-                            cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name,
-                                $"{Emoji.Known.YellowCircle} In progress");
-                            tableContext.Refresh();
-
-                            await session.ExecuteAsync(new SimpleStatement(migration.Cql));
-                            await session.ExecuteAsync(new SimpleStatement(
-                                "INSERT INTO schema_migrations (version, cql, name, time) VALUES (?, ?, ?, toTimestamp(now()));",
-                                migration.Version, migration.Cql, migration.Name));
-
-                            cliTable.RemoveRow(cliTable.Rows.Count - 1);
-                            cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name,
-                                $"[green]{Emoji.Known.CheckMark}[/] Applied");
-                        }
-                        catch
-                        {
-                            cliTable.RemoveRow(cliTable.Rows.Count - 1);
-                            cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name,
-                                $"{Emoji.Known.RedCircle} Failed");
-
-                            stateFailed = true;
-                        }
-                    }
-
-                    tableContext.Refresh();
+                    cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name, $"{Emoji.Known.BrownCircle} Skipped");
                 }
-            });
+                else if (applied)
+                {
+                    cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name, $"[green]{Emoji.Known.CheckMark}[/] Applied");
+                }
+                else
+                {
+                    try
+                    {
+                        cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name, $"{Emoji.Known.YellowCircle} In progress");
+                        tableContext.Refresh();
+
+                        await session.ExecuteAsync(new SimpleStatement(migration.Cql));
+                        await session.ExecuteAsync(new SimpleStatement("INSERT INTO schema_migrations (version, cql, name, time) VALUES (?, ?, ?, toTimestamp(now()));", migration.Version, migration.Cql, migration.Name));
+
+                        cliTable.RemoveRow(cliTable.Rows.Count - 1);
+                        cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name, $"[green]{Emoji.Known.CheckMark}[/] Applied");
+                    }
+                    catch
+                    {
+                        cliTable.RemoveRow(cliTable.Rows.Count - 1);
+                        cliTable.AddRow($"[blue]{migration.Version}[/]", migration.Name, $"{Emoji.Known.RedCircle} Failed");
+
+                        stateFailed = true;
+                    }
+                }
+
+                tableContext.Refresh();
+            }
+        }
     }
 }

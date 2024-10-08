@@ -3,32 +3,25 @@ using Spectre.Console;
 
 namespace Cassandra.Migrations;
 
-public class MigrationsReader
+public sealed class MigrationsReader(string keyspace, string scriptsPath)
 {
-    private readonly string _keyspace;
-    private readonly string _scriptsPath;
-
-    public MigrationsReader(string keyspace, string scriptsPath)
-    {
-        _keyspace = keyspace;
-        _scriptsPath = scriptsPath;
-    }
-
     public async IAsyncEnumerable<(Migration migrations, bool applied)> ReadMigrationScripts(HashSet<string> appliedMigrations)
     {
-        AnsiConsole.MarkupLine($"Reading migrations from scripts path: {_scriptsPath}");
+        AnsiConsole.MarkupLine($"Reading migrations from scripts path: {scriptsPath}");
             
-        var directory = new DirectoryInfo(_scriptsPath);
+        var directory = new DirectoryInfo(scriptsPath);
 
         if (!directory.Exists)
         {
-            var exception = new DirectoryNotFoundException(_scriptsPath);
-            AnsiConsole.WriteException(new DirectoryNotFoundException(_scriptsPath));
+            var exception = new DirectoryNotFoundException(scriptsPath);
+            AnsiConsole.WriteException(new DirectoryNotFoundException(scriptsPath));
             
             throw exception;
         }
 
-        var files = directory.GetFiles("*.cql").OrderBy(f => f.Name);
+        var files = directory
+            .GetFiles("*.cql")
+            .OrderBy(f => f.Name);
 
         foreach (var file in files)
         {
@@ -39,7 +32,7 @@ public class MigrationsReader
 
             var applied = appliedMigrations.Contains(file.Name);
             
-            yield return new (new Migration(file.Name, cql), applied);
+            yield return new ValueTuple<Migration, bool>(new Migration(file.Name, cql), applied);
         }
     }
     
@@ -47,7 +40,7 @@ public class MigrationsReader
     {
         AnsiConsole.MarkupLine("Reading migrations table...");
 
-        var keyspaceMetadata = session.Cluster.Metadata.GetKeyspace(_keyspace);
+        var keyspaceMetadata = session.Cluster.Metadata.GetKeyspace(keyspace);
         var tableNames = keyspaceMetadata.GetTablesNames();
         if (!tableNames.Contains(Constants.MigrationsTableName))
         {
@@ -62,6 +55,7 @@ public class MigrationsReader
         AnsiConsole.MarkupLine("Reading applied migrations...");
 
         var mapper = new Mapper(session);
+       
         return await mapper.FetchAsync<Migration>($"SELECT * FROM {Constants.MigrationsTableName}");
     }
 }

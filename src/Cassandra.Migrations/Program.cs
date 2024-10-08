@@ -2,12 +2,20 @@
 using Cassandra.Migrations.Handlers;
 using Spectre.Console;
 
-AnsiConsole.Write(
-    new FigletText("Cassandra Migrations")
-        .Centered()
-        .Color(Color.Fuchsia));
+namespace Cassandra.Migrations;
 
-var rootCommand = new RootCommand("The tool to apply Apache Cassandra schema migrations")
-    { MigrateCommandHandler.Build() };
+public static class Program
+{
+    public static async Task Main(string[] args)
+    {
+        AnsiConsole.Write(
+            new FigletText("Cassandra Migrations")
+                .Centered()
+                .Color(Color.Fuchsia));
 
-return await rootCommand.InvokeAsync(args);
+        var rootCommand = new RootCommand("The tool to apply Apache Cassandra schema migrations")
+            { MigrateCommandHandler.Build() };
+
+        await rootCommand.InvokeAsync(args);
+    }
+}

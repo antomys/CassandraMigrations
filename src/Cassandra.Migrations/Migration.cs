@@ -1,6 +1,6 @@
 namespace Cassandra.Migrations;
 
-public class Migration
+public sealed class Migration
 {
     public string Version { get; set; }
     public string Name { get; set; }

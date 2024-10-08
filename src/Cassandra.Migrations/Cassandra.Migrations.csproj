@@ -1,21 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <LangVersion>latest</LangVersion>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <OutputType>Exe</OutputType>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="CassandraCSharpDriver" Version="3.18.0"/>
-        <PackageReference Include="Polly" Version="7.2.3"/>
-        <PackageReference Include="Spectre.Console" Version="0.44.1-preview.0.29"/>
+        <PackageReference Include="CassandraCSharpDriver" Version="3.22.0" />
+        <PackageReference Include="Polly" Version="8.4.2" />
+        <PackageReference Include="Spectre.Console" Version="0.49.1" />
         <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1"/>
         <PackageReference Include="System.Linq.Async" Version="6.0.1"/>
     </ItemGroup>
-
-
+    
     <ItemGroup Condition=" '$(Configuration)'=='Debug' ">
         <Content Include="..\..\examples\migrations\v001_initial_schema.cql">
             <Link>migrations\v001_initial_schema.cql</Link>
@@ -33,6 +34,12 @@
             <Link>migrations\v004_some_ok_statement.cql</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+    </ItemGroup>
+    
+    <ItemGroup>
+      <None Include="..\..\assets\icon.png">
+        <Link>icon.png</Link>
+      </None>
     </ItemGroup>
     
 </Project>
